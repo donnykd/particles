@@ -12,10 +12,33 @@ typedef struct Cell {
 } Cell;
 
 typedef struct Sand {
-	int width;
-	int height;
+	Vector2 position;
 	Color colour = YELLOW;
 } Sand;
+
+void updateSand(Sand sandparticles[], int sandCount, Cell cells[CELL_ROWS][CELL_COLUMNS]) {
+	for (int k = 0; k < sandCount; k++) {
+		int i = (int)sandparticles[k].position.y;
+		int j = (int)sandparticles[k].position.x;
+		if (i + 1 < CELL_ROWS && !cells[i + 1][j].active) {
+			cells[i][j].active = false;
+			cells[i + 1][j].active = true;
+			sandparticles[k].position.y += 1;
+		}
+		else if (i + 1 < CELL_ROWS && j - 1 >= 0 && !cells[i + 1][j - 1].active) {
+			cells[i][j].active = false;
+			cells[i + 1][j - 1].active = true;
+			sandparticles[k].position.y += 1;
+			sandparticles[k].position.x -= 1;
+		}
+		else if (i + 1 < CELL_ROWS && j + 1 < CELL_COLUMNS && !cells[i + 1][j + 1].active) {
+			cells[i][j].active = false;
+			cells[i + 1][j + 1].active = true;
+			sandparticles[k].position.y += 1;
+			sandparticles[k].position.x += 1;
+		}
+	}
+}
 
 const int screenWidth = 800;
 const int screenHeight = 800;
@@ -34,7 +57,8 @@ int main(void)
 		}
 	}
 
-	Sand sand[CELL_ROWS][CELL_COLUMNS];
+	Sand sandparticles[CELL_ROWS * CELL_COLUMNS];
+	int sandCount = 0;
 
 	InitWindow(screenWidth, screenHeight, "display");
 	SetTargetFPS(60);
@@ -42,39 +66,7 @@ int main(void)
 	// Main Game loop
 	while (!WindowShouldClose()) {
 		// Update
-		for (int i = CELL_ROWS - 1; i >= 0; i--) {
-			for (int j = 0; j < CELL_COLUMNS; j++) {
-				if (cells[i][j].active && !cells[i + 1][j].active) {
-					int newI = i + 1;
-					if (newI < CELL_ROWS) {
-						cells[newI][j].colour = sand[i][j].colour;
-						cells[newI][j].active = true;
-						cells[i][j].colour = RAYWHITE;
-						cells[i][j].active = false;
-					}
-				}
-				else if (cells[i][j].active && !cells[i + 1][j - 1].active) {
-					int newI = i + 1;
-					int newJ = j - 1;
-					if (newI < CELL_ROWS && newJ < CELL_COLUMNS) {
-						cells[newI][newJ].colour = sand[i][j].colour;
-						cells[newI][newJ].active = true;
-						cells[i][j].colour = RAYWHITE;
-						cells[i][j].active = false;
-					}
-				}
-				else if (cells[i][j].active && !cells[i + 1][j + 1].active) {
-					int newI = i + 1;
-					int newJ = j + 1;
-					if (newI < CELL_ROWS && newJ < CELL_COLUMNS) {
-						cells[newI][newJ].colour = sand[i][j].colour;
-						cells[newI][newJ].active = true;
-						cells[i][j].colour = RAYWHITE;
-						cells[i][j].active = false;
-					}
-				}
-			}
-		}
+		updateSand(sandparticles, sandCount, cells);
 
 		// Draw
 		BeginDrawing();
@@ -88,13 +80,22 @@ int main(void)
 				int x = j * cells[i][j].width;
 				int y = i * cells[i][j].height;
 				if (CheckCollisionPointRec(GetMousePosition(), { (float)x, (float)y, (float)cells[i][j].width, (float)cells[i][j].height }) && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !cells[i][j].active) {
-					cells[i][j].colour = sand[i][j].colour;
-					cells[i][j].active = true;
+					if (sandCount < CELL_ROWS * CELL_COLUMNS) {
+						cells[i][j].active = true;
+						sandparticles[sandCount++].position = { (float)j,(float)i };
+					}
 				}
 
 				DrawRectangle(x, y, cells[i][j].width, cells[i][j].height, cells[i][j].colour);
-				DrawRectangleLines(x, y, cells[i][j].width, cells[i][j].height, RAYWHITE);
 			}
+		}
+
+		// Draw Sand
+
+		for (int k = 0; k < sandCount; k++) {
+			int x = sandparticles[k].position.x * (screenHeight / CELL_COLUMNS);
+			int y = sandparticles[k].position.y * (screenWidth / CELL_ROWS);
+			DrawRectangle(x, y, screenWidth / CELL_ROWS, screenHeight / CELL_COLUMNS, sandparticles[k].colour);
 		}
 
 		EndDrawing();
